@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,   initial-scale=1.0">
+    <title>Grade Calculator</title>
+    <!-- Include PyScript -->
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(106.5deg, 
+            rgba(255, 105, 180, 0.9) 0%, 
+            rgba(255, 105, 180, 0.5) 23%, 
+            rgba(255, 192, 203, 0.8) 50%, 
+            rgba(255, 105, 180, 0.5) 93%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #FFC0CB;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 400px;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        h1 {
+            color: #333333;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        input[type="number"],
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #cccccc;
+            font-size: 16px;    
+        }
+
+        button {
+            background-image: linear-gradient(to bottom, pink, purple);
+            color: #ffffff;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .result {
+            margin-top: 20px;
+            font-size: 16px;
+            display: none;
+        }
+
+        .message {
+            margin: 10px 0;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Grade Calculator</h1>
+        <input type="number" id="prelim" placeholder="Enter Prelim Grade (0-100)" min="0" max="100" step="0.01">
+        <button id="calculateBtn">Calculate</button>
+
+        <div id="result" class="result">
+            <p><b>Prelim Grade:</b> <span id="prelimGrade"></span></p>
+            <p><b>Midterm Grade Required:</b> <span id="midtermGrade"></span></p>
+            <p><b>Final Grade Required:</b> <span id="finalGrade"></span></p>
+            <p id="passMessage" class="message"></p>
+            <p id="deansMessage" class="message"></p>
+        </div>
+        <p id="errorMessage" class="error"></p>
+    </div>
+
+    <py-script>
+        from pyscript import Element
+
+        async def calculate_grade(event):
+            # Hide previous results and clear messages
+            result_element = Element("result").element
+            result_element.style.display = "none"
+            result_element.style.color = "black"
+            Element("prelimGrade").element.innerHTML = ""
+            Element("midtermGrade").element.innerHTML = ""
+            Element("finalGrade").element.innerHTML = ""
+            Element("passMessage").element.innerHTML = ""
+            Element("deansMessage").element.innerHTML = ""
+            Element("errorMessage").element.innerHTML = ""
+
+            prelim_element = Element("prelim").element
+
+            try:
+                # Retrieve and validate input value
+                prelim = prelim_element.value.strip()
+                if prelim == "":
+                    raise ValueError("Prelim grade cannot be empty.")
+                
+                prelim = float(prelim)
+                if prelim < 0 or prelim > 100:
+                    raise ValueError("Grade must be between 0 and 100.")
+                
+            except ValueError as e:
+                Element("errorMessage").element.innerHTML = str(e)
+                result_element.style.display = "none"
+                prelim_element.value = ""  # Clear the input field
+                prelim_element.focus()  # Focus back to the input field for correction
+                return
+
+            # Calculate required grades and messages
+            passing_grade = 75
+            deans_lister_grade = 90
+            prelim_percent = 0.20
+            midterm_percent = 0.30
+            final_percent = 0.50
+
+            current_total = prelim * prelim_percent
+            required_total = passing_grade - current_total
+
+            if required_total > 0:
+                required_midterm_and_final = required_total / (midterm_percent + final_percent)
+                if required_midterm_and_final > 90:
+                    pass_message = "It is difficult to pass, as the required grades are very high."
+                    pass_message_color = "darkred"
+                else:
+                    pass_message = "You have a chance to pass!"
+                    pass_message_color = "darkgreen"
+            else:
+                required_midterm_and_final = 0
+                pass_message = "Your current grade is high enough to pass!"
+                pass_message_color = "darkblue"
+
+            if prelim >= deans_lister_grade:
+                deans_message = "You already qualify for Dean's Lister based on your Prelim grade!"
+                deans_message_color = "darkgreen"
+            else:
+                required_deans_total = deans_lister_grade - current_total
+                required_deans_midfinal = required_deans_total / (midterm_percent + final_percent)
+                deans_message = (
+                    f"The required grade for you to be a Dean’s Lister is "
+                    f"{required_deans_midfinal:.2f}% (midterm) and {required_deans_midfinal:.2f}% (finals)."
+                )
+                deans_message_color = "orange"
+
+            # Update UI with results
+            Element("prelimGrade").element.innerHTML = f"{prelim:.2f}%"
+            Element("midtermGrade").element.innerHTML = f"{required_midterm_and_final:.2f}%"
+            Element("finalGrade").element.innerHTML = f"{required_midterm_and_final:.2f}%"
+            Element("passMessage").element.innerHTML = pass_message
+            Element("passMessage").element.style.color = pass_message_color
+            Element("deansMessage").element.innerHTML = deans_message
+            Element("deansMessage").element.style.color = deans_message_color
+
+            result_element.style.display = "block"
+
+        Element("calculateBtn").element.onclick = calculate_grade
+
+        def handle_keypress(event):
+            if event.key == "Enter":
+                event.preventDefault()
+                Element("calculateBtn").element.click()
+
+        Element("prelim").element.onkeydown = handle_keypress
+    </py-script>
+
+</body>
+</html>
